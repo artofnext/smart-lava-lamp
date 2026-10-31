@@ -11,7 +11,7 @@ Retrofit a 12 V DC lava lamp (heater about 12 V / 1.95 A, about 23 W, coil about
 ## 2. Decisions (from review)
 | Topic | Decision |
 |---|---|
-| MCU | **ESP32-S3-Zero** (Waveshare), MicroPython |
+| MCU | **ESP32-C3 SuperMini**, MicroPython |
 | Heater | 12 V, 1.95 A. Not hazardous when left powered, by lamp construction. Software safety is still kept as defence in depth |
 | Level shifter, thermal fuse | Not used |
 | Timezone | Europe/London and Europe/Lisbon: UTC+0, UTC+1 in summer (see 6.3) |
@@ -27,15 +27,15 @@ Retrofit a 12 V DC lava lamp (heater about 12 V / 1.95 A, about 23 W, coil about
 
 A 12 V supply rated 3 A is recommended. The 2 A rating in the spec leaves little margin. The code caps LED brightness (default 40 %, about 0.4 A at 5 V) and heater duty is limited by the PID, so typical draw is lower.
 
-## 4. Pin map (ESP32-S3-Zero, proposed)
-Verify against your board's silkscreen before wiring. Avoid strapping pins 0, 3, 45 and 46.
+## 4. Pin map (ESP32-C3 SuperMini, proposed)
+Verify against your board's silkscreen before wiring. Avoid strapping pins 2, 8 and 9 for external peripherals.
 
 | Function | GPIO |
 |---|---|
 | Heater MOSFET gate (via 220 Ω) | GPIO4 |
 | DS18B20 data | GPIO5 |
 | WS2812B ring data | GPIO6 |
-| Onboard RGB LED (optional status) | GPIO21 |
+| Onboard blue LED (active low) | GPIO8 |
 
 All pins live in `firmware/pins.py` only.
 
@@ -46,7 +46,7 @@ All pins live in `firmware/pins.py` only.
        ├─────────── Heater ──┬── Drain (IRLZ44N)
        │                     └── 1N4007 across heater (stripe to 12V+)
        └── Buck IN                 Source ── GND
-Buck OUT 5V ── ESP32-S3-Zero 5V pin, WS2812B ring 5V
+Buck OUT 5V ── ESP32-C3 SuperMini 5V pin, WS2812B ring 5V
 ESP32 3V3 ──┬─ 4.7kΩ ─┬─ DS18B20 DATA ── GPIO5
             └─ DS18B20 VDD   (GND to common GND)
 GPIO4 ── 220Ω ──┬── Gate
@@ -63,7 +63,7 @@ All grounds join at one point.
 - Add a 100 nF capacitor across the ring supply and a 330-470 µF capacitor near the ring if you see glitches.
 
 ### 5.3 BOM
-As in the original spec, with the MCU changed to the ESP32-S3-Zero. Optional extras: 1 Schottky diode (1N5819), 1 x 100 nF capacitor, a 3 A supply.
+As in the original spec, with the MCU changed to the ESP32-C3 SuperMini. Optional extras: 1 Schottky diode (1N5819), 1 x 100 nF capacitor, a 3 A supply.
 
 ## 6. Firmware design
 ### 6.1 Modules

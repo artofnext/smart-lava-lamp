@@ -7,13 +7,13 @@ Soldering iron, multimeter, wire strippers, heat-shrink, Kapton tape, thermal pa
 
 ## Step 1: Bench-test the parts (Phase 1)
 1. Set the buck converter output to **5.0 V** with no load, then check under a load (e.g. a 10 Ω resistor).
-2. Flash MicroPython onto the ESP32-S3-Zero: hold BOOT, plug in USB, then run `esptool` with the S3 MicroPython image. Check with `mpremote` that the REPL answers.
+2. Flash MicroPython onto the ESP32-C3 SuperMini: hold BOOT, plug in USB, then run `esptool` with the C3 MicroPython image. Check with `mpremote` that the REPL answers.
 3. Run `tools/bench/ds18b20_scan.py` with the sensor on a breadboard. It must find exactly one device and read about room temperature.
 4. Wire the MOSFET with a 12 V, 7 Ω load (or the real heater). Run `tools/bench/pwm_ramp.py`. Confirm the load power rises smoothly and the MOSFET only gets slightly warm.
 5. Record results in `docs/bench-checklist.md`.
 
 ## Step 2: Build the board
-1. Lay out on perfboard: ESP32-S3-Zero, buck module, MOSFET, resistors, capacitor, diode, terminal blocks.
+1. Lay out on perfboard: ESP32-C3 SuperMini, buck module, MOSFET, resistors, capacitor, diode, terminal blocks.
 2. Power wiring uses 22 AWG, signals use 28 AWG.
 3. Solder:
    - 12 V jack → 100 µF (observe polarity) → buck input and heater terminal.

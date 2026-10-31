@@ -1,6 +1,6 @@
 # Bench Checklist (Phase 1)
 
-Date: ____  Board: ESP32-S3-Zero  Supply: 12 V ___ A
+Date: ____  Board: ESP32-C3 SuperMini  Supply: 12 V ___ A
 
 | # | Check | Expected | Result |
 |---|---|---|---|
