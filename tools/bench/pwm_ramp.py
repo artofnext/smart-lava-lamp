@@ -10,7 +10,7 @@ import pins
 MAX_DUTY = 50     # percent; raise gradually
 STEP = 10         # percent per step
 HOLD_S = 20       # seconds per step (watch the MOSFET/load temperature)
-FREQ = 1000       # Hz
+FREQ = 10         # Hz (low frequency prevents EMI/interference into 1-Wire sensor)
 
 pwm = PWM(Pin(pins.HEATER), freq=FREQ, duty_u16=0)
 
