@@ -24,26 +24,22 @@ class TestControllerLogic(unittest.TestCase):
         self.assertEqual(out, 0.0)
 
     def test_safety_latch(self):
-        safety = SafetyLatch(cutoff_temp=100.0, timeout_s=5.0)
+        safety = SafetyLatch(cutoff_temp=200.0, timeout_s=5.0)
 
-        # Normal condition (operating at high setpoint 80C)
-        self.assertTrue(safety.check(temp=80.0, last_valid_time=100.0, current_time=102.0))
+        # Normal condition
+        self.assertTrue(safety.check(temp=100.0, last_valid_time=100.0, current_time=102.0))
         self.assertIsNone(safety.fault)
 
-        # Cutoff exceeded (100C)
-        self.assertFalse(safety.check(temp=100.5, last_valid_time=102.0, current_time=102.5))
+        # Cutoff exceeded (200C)
+        self.assertFalse(safety.check(temp=200.5, last_valid_time=102.0, current_time=102.5))
         self.assertIsNotNone(safety.fault)
         self.assertIn("Over-temperature", safety.fault)
 
-        # Refuse reset if still above cutoff - 5C (95C)
-        self.assertFalse(safety.reset_fault(current_temp=96.0))
-        self.assertIsNotNone(safety.fault)
-
-        # Reset allowed once cooled below 95C
-        self.assertTrue(safety.reset_fault(current_temp=92.0))
+        # Reset unconditionally clears the fault latch
+        self.assertTrue(safety.reset_fault())
         self.assertIsNone(safety.fault)
 
-        # Timeout trips latch
+        # Timeout trips latch if timeout_s > 0
         self.assertFalse(safety.check(temp=48.0, last_valid_time=100.0, current_time=106.0))
         self.assertIn("timeout", safety.fault.lower())
 

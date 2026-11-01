@@ -7,10 +7,11 @@ DEFAULT_CONFIG = {
     "token": "change-me",
     "hostname": "lavalamp",
     "setpoint": 50.0,
+    "power_pct": 100,
     "pid": {"kp": 8.0, "ki": 0.05, "kd": 40.0},
     "max_duty": 100,
     "pwm_freq": 10,
-    "limits": {"min": 45.0, "max": 80.0, "cutoff": 100.0},
+    "limits": {"min": 0.0, "max": 100.0, "cutoff": 200.0},
     "tz_dst": True,
     "led": {"brightness": 40, "palette": "lava"},
     "schedule": [],
@@ -62,6 +63,6 @@ class Config:
         sp = float(self.data.get("setpoint", 50.0))
         limits = self.data.get("limits", {})
         low = float(limits.get("min", 45.0))
-        high = float(limits.get("max", 80.0))
+        high = float(limits.get("max", 100.0))
         return max(low, min(high, sp))
 

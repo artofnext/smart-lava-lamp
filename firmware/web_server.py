@@ -143,12 +143,18 @@ class WebServer:
                 await self._send_response(writer, 400, {"error": "Missing 'on' boolean"})
             return
 
-        if path == "/api/setpoint" and method == "POST":
-            if data and "value" in data:
-                sp = self.state.set_setpoint(float(data["value"]))
-                await self._send_response(writer, 200, {"success": True, "setpoint": sp})
+        if (path == "/api/power-level" or path == "/api/setpoint") and method == "POST":
+            val = None
+            if data:
+                if "value" in data:
+                    val = float(data["value"])
+                elif "power_pct" in data:
+                    val = float(data["power_pct"])
+            if val is not None:
+                p = self.state.set_power_pct(val)
+                await self._send_response(writer, 200, {"success": True, "power_pct": p, "setpoint": p})
             else:
-                await self._send_response(writer, 400, {"error": "Missing 'value'"})
+                await self._send_response(writer, 400, {"error": "Missing 'value' or 'power_pct'"})
             return
 
         if path == "/api/pid":
@@ -160,11 +166,8 @@ class WebServer:
             return
 
         if path == "/api/reset-fault" and method == "POST":
-            ok = self.state.reset_fault()
-            if ok:
-                await self._send_response(writer, 200, {"success": True})
-            else:
-                await self._send_response(writer, 409, {"error": "Cannot reset: temperature still too high or sensor fault"})
+            self.state.reset_fault()
+            await self._send_response(writer, 200, {"success": True})
             return
 
         if path == "/api/pattern/run" and method == "POST":

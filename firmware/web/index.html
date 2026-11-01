@@ -25,8 +25,10 @@
     .title { font-size: 1.25rem; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 8px; }
     .badge { padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; background: #333; color: #ccc; }
     .badge.OFF { background: #333; color: #888; }
+    .badge.HEATING { background: #d97706; color: #fff; }
     .badge.WARMING { background: #d97706; color: #fff; }
     .badge.HOLDING { background: #16a34a; color: #fff; }
+    .badge.COOLING { background: #2563eb; color: #fff; }
     .badge.FAULT { background: var(--danger); color: #fff; animation: pulse 1.5s infinite; }
     @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
 
@@ -69,13 +71,21 @@
 
       <div class="temp-display">
         <div id="currentTemp" class="current-temp">--.-°</div>
-        <div id="targetText" class="target-temp">Target: 50.0 °C</div>
+        <div id="targetText" class="target-temp">Heater Power: 100 %</div>
+        <div id="cutoffInfo" style="font-size: 0.75rem; color: var(--muted); margin-top: 2px;">DS18B20 Telemetry (Cutoff: 200°C)</div>
       </div>
 
       <div class="slider-group">
-        <button class="step-btn" onclick="adjustSetpoint(-0.5)">-</button>
-        <input type="range" id="spSlider" min="45" max="80" step="0.5" value="50" onchange="sendSetpoint(this.value)" oninput="updateSpText(this.value)">
-        <button class="step-btn" onclick="adjustSetpoint(0.5)">+</button>
+        <button class="step-btn" onclick="adjustPower(-5)">-5</button>
+        <input type="range" id="powerSlider" min="0" max="100" step="5" value="100" onchange="sendPower(this.value)" oninput="updatePowerText(this.value)">
+        <button class="step-btn" onclick="adjustPower(5)">+5</button>
+      </div>
+
+      <div style="display:flex; gap:6px; margin: 4px 0 10px 0;">
+        <button class="btn btn-power" style="flex:1; padding:8px 4px; font-size:0.85rem;" onclick="setPowerPreset(25)">25%</button>
+        <button class="btn btn-power" style="flex:1; padding:8px 4px; font-size:0.85rem;" onclick="setPowerPreset(50)">50%</button>
+        <button class="btn btn-power" style="flex:1; padding:8px 4px; font-size:0.85rem;" onclick="setPowerPreset(75)">75%</button>
+        <button class="btn btn-power" style="flex:1; padding:8px 4px; font-size:0.85rem;" onclick="setPowerPreset(100)">100%</button>
       </div>
 
       <div style="display:flex; justify-content:space-between; font-size:0.8rem; color:var(--muted); margin-top:8px;">
@@ -131,7 +141,7 @@
     let isPowered = false;
     let history = [];
     let limitsMin = 45;
-    let limitsMax = 80;
+    let limitsMax = 100;
 
     function authHeaders() {
       return { "Content-Type": "application/json", "Authorization": "Bearer " + token };
@@ -156,21 +166,28 @@
       }
     }
 
-    function updateSpText(val) {
-      document.getElementById("targetText").innerText = `Target: ${parseFloat(val).toFixed(1)} °C`;
+    function updatePowerText(val) {
+      document.getElementById("targetText").innerText = `Heater Power: ${parseInt(val)} %`;
     }
 
-    function adjustSetpoint(delta) {
-      const el = document.getElementById("spSlider");
-      let v = parseFloat(el.value) + delta;
-      v = Math.max(limitsMin, Math.min(limitsMax, v));
+    function adjustPower(delta) {
+      const el = document.getElementById("powerSlider");
+      let v = parseInt(el.value) + delta;
+      v = Math.max(0, Math.min(100, v));
       el.value = v;
-      updateSpText(v);
-      sendSetpoint(v);
+      updatePowerText(v);
+      sendPower(v);
     }
 
-    async function sendSetpoint(val) {
-      await api("/api/setpoint", "POST", { value: parseFloat(val) });
+    function setPowerPreset(val) {
+      const el = document.getElementById("powerSlider");
+      el.value = val;
+      updatePowerText(val);
+      sendPower(val);
+    }
+
+    async function sendPower(val) {
+      await api("/api/power-level", "POST", { power_pct: parseFloat(val) });
     }
 
     async function togglePower() {
@@ -216,7 +233,7 @@
       ctx.clearRect(0, 0, w, h);
       if (history.length < 2) return;
 
-      const minT = 20, maxT = 105;
+      const minT = 20, maxT = 125;
       ctx.strokeStyle = "#333";
       ctx.beginPath();
       ctx.moveTo(0, h * 0.5); ctx.lineTo(w, h * 0.5);
@@ -237,17 +254,11 @@
       const data = await api("/api/status");
       if (!data) return;
 
-      if (data.limits) {
-        limitsMin = data.limits.min || 45;
-        limitsMax = data.limits.max || 80;
-        const sl = document.getElementById("spSlider");
-        sl.min = limitsMin;
-        sl.max = limitsMax;
-      }
 
       document.getElementById("currentTemp").innerText = data.temp !== null ? `${data.temp.toFixed(1)}°` : "--.-°";
-      document.getElementById("targetText").innerText = `Target: ${data.setpoint.toFixed(1)} °C`;
-      document.getElementById("spSlider").value = data.setpoint;
+      const pLvl = data.power_pct !== undefined ? data.power_pct : (data.setpoint || 100);
+      document.getElementById("targetText").innerText = `Heater Power: ${Math.round(pLvl)} %`;
+      document.getElementById("powerSlider").value = pLvl;
 
       document.getElementById("dutyText").innerText = `${Math.round(data.duty)} %`;
       document.getElementById("dutyBar").style.width = `${data.duty}%`;

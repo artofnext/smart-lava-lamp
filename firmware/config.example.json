@@ -6,6 +6,7 @@
   "token": "change-me",
   "hostname": "lavalamp",
   "setpoint": 50.0,
+  "power_pct": 100,
   "pid": {
     "kp": 8.0,
     "ki": 0.05,
@@ -14,9 +15,9 @@
   "max_duty": 100,
   "pwm_freq": 10,
   "limits": {
-    "min": 45,
-    "max": 80,
-    "cutoff": 100
+    "min": 0,
+    "max": 100,
+    "cutoff": 200
   },
   "tz_dst": true,
   "led": {
