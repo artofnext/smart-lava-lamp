@@ -45,7 +45,10 @@
     .btn { padding: 12px; border-radius: 12px; font-weight: 600; font-size: 0.95rem; border: none; cursor: pointer; text-align: center; }
     .btn-power { background: #2e3039; color: #fff; }
     .btn-power.on { background: var(--primary); color: #fff; box-shadow: 0 0 15px var(--primary-glow); }
+    .btn-power:disabled { opacity: 0.65; cursor: not-allowed; }
     .btn-reset { background: #3b2020; color: #ff8888; border: 1px solid #662222; }
+    .row-between { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 12px; font-size: 0.9rem; }
+    input[type=color] { width: 52px; height: 34px; border: 1px solid var(--border); border-radius: 8px; background: #262830; cursor: pointer; padding: 2px; }
 
     canvas { width: 100%; height: 140px; margin-top: 14px; background: #17181c; border-radius: 8px; }
     .meta-row { display: flex; justify-content: space-between; font-size: 0.78rem; color: var(--muted); margin-top: 12px; padding-top: 10px; border-top: 1px solid #262830; }
@@ -65,7 +68,7 @@
       <div class="temp-display">
         <div id="currentTemp" class="current-temp">--.-°</div>
         <div id="targetText" class="target-temp">Heater Power: 100 %</div>
-        <div id="cutoffInfo" style="font-size: 0.75rem; color: var(--muted); margin-top: 2px;">DS18B20 Telemetry (Cutoff: 200°C)</div>
+        <div id="cutoffInfo" style="font-size: 0.75rem; color: var(--muted); margin-top: 2px;">DS18B20 Telemetry (Cutoff: 100°C)</div>
       </div>
 
       <div class="slider-group">
@@ -90,7 +93,7 @@
       </div>
 
       <div class="btn-row">
-        <button id="powerBtn" class="btn btn-power" onclick="togglePower()">Power ON</button>
+        <button id="powerBtn" class="btn btn-power" onclick="togglePower()">Heater ON</button>
         <button id="resetBtn" class="btn btn-reset" onclick="resetFault()">Clear Fault</button>
       </div>
 
@@ -101,11 +104,45 @@
         <span>Uptime: <strong id="devUptime">--</strong></span>
       </div>
     </div>
+
+    <div class="card">
+      <div class="header">
+        <div class="title">💡 LED Ring</div>
+        <button id="ledPowerBtn" class="btn btn-power" style="padding: 6px 14px; font-size: 0.85rem;" onclick="toggleLed()">LED ON</button>
+      </div>
+
+      <div class="row-between">
+        <span style="color: var(--muted);">Brightness (<span id="ledBriVal">50</span>%)</span>
+        <input type="range" id="ledBriSlider" min="5" max="80" step="5" value="50" oninput="document.getElementById('ledBriVal').innerText=this.value" onchange="updateLed({brightness: parseInt(this.value)})">
+      </div>
+
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-top:14px;">
+        <button id="modeSolid" class="btn btn-power" style="padding:10px 6px; font-size:0.85rem;" onclick="updateLed({mode:'solid'})">Solid</button>
+        <button id="modeTemp" class="btn btn-power" style="padding:10px 6px; font-size:0.85rem;" onclick="updateLed({mode:'temp'})">Temp</button>
+        <button id="modeRainbow" class="btn btn-power" style="padding:10px 6px; font-size:0.85rem;" onclick="updateLed({mode:'rainbow'})">Rainbow</button>
+        <button id="modeFlame" class="btn btn-power" style="padding:10px 6px; font-size:0.85rem;" onclick="updateLed({mode:'flame'})">🔥 Flame</button>
+      </div>
+
+      <div id="solidControls" class="row-between" style="display:none;">
+        <span style="color: var(--muted);">Solid Color</span>
+        <input type="color" id="ledColorPicker" value="#ff3c00" onchange="onColorChange(this.value)">
+      </div>
+
+      <div id="tempControls" class="row-between" style="display:none; font-size:0.78rem; color:var(--muted); justify-content:center;">
+        <span>≤25° Blue → 40° Purple → 55° Orange → ≥60° Red</span>
+      </div>
+
+      <div id="rainbowControls" class="row-between" style="display:none;">
+        <span style="color: var(--muted);">Animation Speed (<span id="ledSpdVal">30</span>%)</span>
+        <input type="range" id="ledSpdSlider" min="1" max="100" step="1" value="30" oninput="document.getElementById('ledSpdVal').innerText=this.value" onchange="updateLed({speed: parseInt(this.value)})">
+      </div>
+    </div>
   </div>
 
   <script>
     let token = localStorage.getItem("ll_token") || "lavalamp-token-9349fi4j34489";
     let isPowered = false;
+    let ledOn = true;
     let history = [];
     const WINDOW_MS = 3600 * 1000; // 1 hour sliding window
 
@@ -166,6 +203,62 @@
       fetchStatus();
     }
 
+    async function updateLed(payload) {
+      await api("/api/led", "POST", payload);
+      fetchStatus();
+    }
+
+    function toggleLed() {
+      if (isPowered) return;
+      updateLed({ on: !ledOn });
+    }
+
+    function onColorChange(hex) {
+      const r = parseInt(hex.slice(1, 3), 16);
+      const g = parseInt(hex.slice(3, 5), 16);
+      const b = parseInt(hex.slice(5, 7), 16);
+      updateLed({ color: [r, g, b] });
+    }
+
+    function rgbToHex(c) {
+      return "#" + c.map(x => Math.max(0, Math.min(255, x)).toString(16).padStart(2, "0")).join("");
+    }
+
+    function syncLedUi(led, heaterPower) {
+      if (!led) return;
+      ledOn = heaterPower ? true : !!led.on;
+      const lBtn = document.getElementById("ledPowerBtn");
+      lBtn.disabled = !!heaterPower;
+      lBtn.className = ledOn ? "btn btn-power on" : "btn btn-power";
+      lBtn.innerText = heaterPower ? "ON (Heater)" : (ledOn ? "LED ON" : "LED OFF");
+
+      const briSlider = document.getElementById("ledBriSlider");
+      if (document.activeElement !== briSlider) {
+        briSlider.value = led.brightness;
+        document.getElementById("ledBriVal").innerText = led.brightness;
+      }
+
+      document.getElementById("modeSolid").className = led.mode === "solid" ? "btn btn-power on" : "btn btn-power";
+      document.getElementById("modeTemp").className = led.mode === "temp" ? "btn btn-power on" : "btn btn-power";
+      document.getElementById("modeRainbow").className = led.mode === "rainbow" ? "btn btn-power on" : "btn btn-power";
+      document.getElementById("modeFlame").className = led.mode === "flame" ? "btn btn-power on" : "btn btn-power";
+
+      document.getElementById("solidControls").style.display = led.mode === "solid" ? "flex" : "none";
+      document.getElementById("tempControls").style.display = led.mode === "temp" ? "flex" : "none";
+      document.getElementById("rainbowControls").style.display = (led.mode === "rainbow" || led.mode === "flame") ? "flex" : "none";
+
+      const colorPicker = document.getElementById("ledColorPicker");
+      if (Array.isArray(led.color) && document.activeElement !== colorPicker) {
+        colorPicker.value = rgbToHex(led.color);
+      }
+
+      const spdSlider = document.getElementById("ledSpdSlider");
+      if (document.activeElement !== spdSlider) {
+        spdSlider.value = led.speed;
+        document.getElementById("ledSpdVal").innerText = led.speed;
+      }
+    }
+
     function drawChart() {
       const canvas = document.getElementById("chartCanvas");
       const ctx = canvas.getContext("2d");
@@ -176,15 +269,19 @@
       const w = canvas.clientWidth, h = canvas.clientHeight;
       ctx.clearRect(0, 0, w, h);
 
-      const minT = 20, maxT = 130;
-      ctx.strokeStyle = "#2a2c35";
+      const minT = 10, maxT = 80, meltT = 63;
+      const yMelt = h - ((meltT - minT) / (maxT - minT)) * h;
+      ctx.strokeStyle = "#3f4354";
+      ctx.setLineDash([4, 4]);
       ctx.beginPath();
-      ctx.moveTo(0, h * 0.5); ctx.lineTo(w, h * 0.5);
+      ctx.moveTo(0, yMelt); ctx.lineTo(w, yMelt);
       ctx.stroke();
+      ctx.setLineDash([]);
 
       ctx.fillStyle = "#6e737b";
       ctx.font = "10px sans-serif";
       ctx.fillText(`${maxT}°C`, 6, 12);
+      ctx.fillText(`${meltT}°C`, 6, yMelt - 4);
       ctx.fillText(`${minT}°C`, 6, h - 6);
       ctx.fillText("-60m", 42, h - 6);
       ctx.fillText("now", w - 26, h - 6);
@@ -242,7 +339,7 @@
       isPowered = data.power;
       const pBtn = document.getElementById("powerBtn");
       pBtn.className = isPowered ? "btn btn-power on" : "btn btn-power";
-      pBtn.innerText = isPowered ? "Power OFF" : "Power ON";
+      pBtn.innerText = isPowered ? "Heater OFF" : "Heater ON";
 
       const fb = document.getElementById("faultBanner");
       if (data.fault) {
@@ -264,6 +361,7 @@
 
       document.getElementById("devIp").innerText = data.ip || "--";
       document.getElementById("devUptime").innerText = `${Math.floor(data.uptime / 60)} min`;
+      syncLedUi(data.led, data.power);
     }
 
     loadInitialHistory().then(() => {

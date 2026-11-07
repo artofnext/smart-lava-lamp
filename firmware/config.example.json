@@ -11,6 +11,13 @@
   "limits": {
     "min": 0,
     "max": 100,
-    "cutoff": 200
+    "cutoff": 100
+  },
+  "led": {
+    "on": true,
+    "brightness": 50,
+    "mode": "temp",
+    "color": [255, 60, 0],
+    "speed": 30
   }
 }

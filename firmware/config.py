@@ -9,7 +9,14 @@ DEFAULT_CONFIG = {
     "power_pct": 100,
     "max_duty": 100,
     "pwm_freq": 10,
-    "limits": {"min": 0.0, "max": 100.0, "cutoff": 200.0}
+    "limits": {"min": 0.0, "max": 100.0, "cutoff": 100.0},
+    "led": {
+        "on": True,
+        "brightness": 50,
+        "mode": "temp",
+        "color": [255, 60, 0],
+        "speed": 30
+    }
 }
 
 class Config:

@@ -166,6 +166,14 @@ class WebServer:
             await self._send_response(writer, 200, {"success": True})
             return
 
+        if path == "/api/led":
+            if method == "POST" and data:
+                led_state = self.state.update_led(data)
+                await self._send_response(writer, 200, {"success": True, "led": led_state})
+            else:
+                await self._send_response(writer, 200, self.state.leds.to_dict(self.state.power_on))
+            return
+
         await self._send_response(writer, 404, {"error": "Not found"})
 
     async def _send_response(self, writer, code, payload):

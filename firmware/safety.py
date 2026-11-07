@@ -2,7 +2,7 @@ import time
 
 class SafetyLatch:
     """Safety trip latch for over-temperature (cutoff)."""
-    def __init__(self, cutoff_temp=200.0, timeout_s=0.0):
+    def __init__(self, cutoff_temp=100.0, timeout_s=0.0):
         self.cutoff_temp = float(cutoff_temp)
         self.timeout_s = float(timeout_s)
         self.fault = None
