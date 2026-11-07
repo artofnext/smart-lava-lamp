@@ -6,10 +6,12 @@ MAX_BRIGHTNESS = 80
 VALID_MODES = ("solid", "temp", "rainbow", "flame")
 
 TEMP_STOPS = (
-    (25.0, (0, 100, 255)),   # Cool blue
-    (40.0, (160, 0, 220)),   # Purple
-    (55.0, (255, 110, 0)),   # Orange
-    (60.0, (255, 15, 0)),    # Lava red
+    (10.0, (220, 235, 255)),  # Cold white
+    (15.0, (0, 255, 50)),     # Green
+    (25.0, (0, 100, 255)),    # Cool blue
+    (40.0, (160, 0, 220)),    # Purple
+    (55.0, (255, 110, 0)),    # Orange
+    (60.0, (255, 15, 0)),     # Lava red
 )
 
 def temp_to_rgb(temp):

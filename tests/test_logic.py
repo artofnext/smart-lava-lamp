@@ -58,7 +58,9 @@ class TestControllerLogic(unittest.TestCase):
         from leds import LEDController, temp_to_rgb
 
         # Temperature keyframes
-        self.assertEqual(temp_to_rgb(20.0), (0, 100, 255))    # <= 25C cool blue
+        self.assertEqual(temp_to_rgb(8.0), (220, 235, 255))   # <= 10C cold white
+        self.assertEqual(temp_to_rgb(15.0), (0, 255, 50))     # 15C green
+        self.assertEqual(temp_to_rgb(25.0), (0, 100, 255))    # 25C cool blue
         self.assertEqual(temp_to_rgb(40.0), (160, 0, 220))    # 40C purple
         self.assertEqual(temp_to_rgb(55.0), (255, 110, 0))    # 55C orange
         self.assertEqual(temp_to_rgb(65.0), (255, 15, 0))     # >= 60C lava red

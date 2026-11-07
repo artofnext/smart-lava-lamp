@@ -45,7 +45,9 @@ Open `http://<lamp-ip>` in your phone or desktop browser (enter your access toke
 - **Lighting Modes**:
   1. **Solid**: Fills all 16 LEDs with a single static color chosen via the **Solid Color** picker.
   2. **Temp (Temperature Reactive)**: Smoothly blends all 16 LEDs based on live sensor temperature:
-     - `≤ 25 °C`: Cool Blue
+     - `≤ 10 °C`: Cold White
+     - `15 °C`: Green
+     - `25 °C`: Cool Blue
      - `40 °C`: Purple
      - `55 °C`: Orange
      - `≥ 60 °C`: Lava Red
