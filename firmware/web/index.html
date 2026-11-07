@@ -140,7 +140,10 @@
   </div>
 
   <script>
-    let token = localStorage.getItem("ll_token") || "lavalamp-token-9349fi4j34489";
+    const urlToken = new URLSearchParams(location.search).get("token");
+    if (urlToken) localStorage.setItem("ll_token", urlToken);
+    let token = localStorage.getItem("ll_token") || "";
+    let authRejected = false;
     let isPowered = false;
     let ledOn = true;
     let history = [];
@@ -158,13 +161,17 @@
         if (body) opts.body = JSON.stringify(body);
         const res = await fetch(path, opts);
         if (res.status === 401) {
-          const t = prompt("Enter dashboard access token:");
-          if (t) {
-            token = t;
-            localStorage.setItem("ll_token", t);
+          const t = prompt("Unauthorized. Enter dashboard access token:");
+          if (t !== null && t.trim() !== "") {
+            token = t.trim();
+            localStorage.setItem("ll_token", token);
+            authRejected = false;
+          } else {
+            authRejected = true;
           }
           return null;
         }
+        authRejected = false;
         return await res.json();
       } catch (e) {
         return null;
@@ -199,7 +206,7 @@
 
     async function togglePower() {
       await api("/api/power", "POST", { on: !isPowered });
-      fetchStatus();
+      setTimeout(fetchStatus, 150);
     }
 
     async function resetFault() {
@@ -369,12 +376,17 @@
     }
 
     async function pollLoop() {
-      await fetchStatus();
+      if (!authRejected) {
+        await fetchStatus();
+      }
       setTimeout(pollLoop, 2000);
     }
 
-    loadInitialHistory().then(() => {
-      pollLoop();
+    fetchStatus().then(async () => {
+      if (!authRejected) {
+        await loadInitialHistory();
+      }
+      setTimeout(pollLoop, 2000);
     });
   </script>
 </body>

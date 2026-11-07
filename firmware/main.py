@@ -148,7 +148,7 @@ async def connect_wifi(cfg):
     except Exception:
         pass
     try:
-        w.config(txpower=8.5)
+        w.config(txpower=13)
     except Exception:
         pass
 

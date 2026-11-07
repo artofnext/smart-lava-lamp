@@ -55,6 +55,11 @@ def heat_to_flame_rgb(h):
     f = (h - 0.85) / 0.15
     return (255, int(135 + 75 * f), int(35 * f))
 
+def speed_curve(pct):
+    """Map linear slider 1..100 to a logarithmic 0.0..1.0 scale (100:1 dynamic range)."""
+    x = max(0.0, min(1.0, (float(pct) - 1.0) / 99.0))
+    return (100.0 ** x - 1.0) / 99.0
+
 class LEDController:
     def __init__(self, pin_num, cfg=None):
         cfg = cfg or {}
@@ -77,7 +82,8 @@ class LEDController:
         return (self._rng >> 8) / 16777216.0
 
     def _step_flame(self, dt, scale):
-        rate = min(0.45, dt * (1.2 + self.speed * 0.08))
+        k = speed_curve(self.speed)
+        rate = min(0.55, dt * (0.4 + k * 12.0))
         new_heat = [0.0] * NUM_LEDS
         # 1. Cool down & diffuse across neighboring pixels on the ring
         for i in range(NUM_LEDS):
@@ -89,7 +95,7 @@ class LEDController:
             new_heat[i] = max(0.08, blended - cool)
 
         # 2. Random ember sparks / flame tongues
-        if self._rand_float() < (0.35 + self.speed * 0.005):
+        if self._rand_float() < (0.06 + k * 0.85):
             idx = int(self._rand_float() * NUM_LEDS) % NUM_LEDS
             flare = 0.65 + 0.35 * self._rand_float()
             new_heat[idx] = max(new_heat[idx], flare)
@@ -115,8 +121,9 @@ class LEDController:
             if self.mode == "solid":
                 r, g, b = self.color
             elif self.mode == "rainbow":
-                # Speed 1..100 maps to ~3..120 deg/sec across the hue wheel
-                self.hue = (self.hue + dt * (2.0 + self.speed * 1.18)) % 360.0
+                # Logarithmic speed: 1% = 0.5 deg/s (12 min cycle), 50% = ~17 deg/s, 100% = 180 deg/s (2s cycle)
+                k = speed_curve(self.speed)
+                self.hue = (self.hue + dt * (0.5 + k * 179.5)) % 360.0
                 r, g, b = hsv_to_rgb(self.hue)
             else:
                 r, g, b = temp_to_rgb(current_temp)

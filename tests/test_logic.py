@@ -55,7 +55,12 @@ class TestControllerLogic(unittest.TestCase):
     def test_led_modes_and_heater_override(self):
         sys.modules["machine"] = mock.MagicMock()
         sys.modules["neopixel"] = mock.MagicMock()
-        from leds import LEDController, temp_to_rgb
+        from leds import LEDController, temp_to_rgb, speed_curve
+
+        # Logarithmic speed curve check (50% slider < 15% of max speed)
+        self.assertAlmostEqual(speed_curve(1), 0.0)
+        self.assertLess(speed_curve(50), 0.12)
+        self.assertAlmostEqual(speed_curve(100), 1.0)
 
         # Temperature keyframes
         self.assertEqual(temp_to_rgb(8.0), (220, 235, 255))   # <= 10C cold white

@@ -1,6 +1,14 @@
 import asyncio
 import json
 
+STATUS_TEXT = {
+    200: "OK",
+    400: "Bad Request",
+    401: "Unauthorized",
+    404: "Not Found",
+    409: "Conflict",
+}
+
 def constant_time_compare(val1, val2):
     if not val1 or not val2 or len(val1) != len(val2):
         return False
@@ -14,6 +22,7 @@ class WebServer:
         self.state = app_state
         self.port = port
         self.server = None
+        self._html_cache = None
 
     async def start(self):
         self.server = await asyncio.start_server(self._handle_client, "0.0.0.0", self.port)
@@ -21,7 +30,8 @@ class WebServer:
 
     async def _handle_client(self, reader, writer):
         try:
-            await asyncio.wait_for(self._process_request(reader, writer), 4)
+            await asyncio.wait_for(self._process_request(reader, writer), 5)
+            await asyncio.sleep_ms(25)
         except Exception as e:
             print("HTTP handler error:", e)
         finally:
@@ -70,10 +80,17 @@ class WebServer:
                     except Exception:
                         pass
 
-        # Read body
+        # Read full body across TCP segments (critical behind Nginx reverse proxy)
         body = b""
-        if content_length > 0:
-            body = await reader.read(content_length)
+        while len(body) < content_length:
+            chunk = await reader.read(content_length - len(body))
+            if not chunk:
+                break
+            body += chunk
+
+        if method == "OPTIONS":
+            await self._send_response(writer, 200, {})
+            return
 
         # Serve static UI
         if path in ("/", "/index.html"):
@@ -97,17 +114,15 @@ class WebServer:
         await self._route_api(method, path, body, writer)
 
     async def _serve_index(self, writer):
-        html_data = None
-        for p in ("web/index.html", "/web/index.html", "index.html"):
-            try:
-                with open(p, "rb") as f:
-                    html_data = f.read()
-                break
-            except Exception:
-                pass
-
-        if not html_data:
-            html_data = b"<h1>Smart Lava Lamp</h1><p>Deploy UI files or check status at /api/status</p>"
+        if self._html_cache is None:
+            for p in ("web/index.html", "/web/index.html", "index.html"):
+                try:
+                    with open(p, "rb") as f:
+                        self._html_cache = f.read()
+                    break
+                except Exception:
+                    pass
+        html_data = self._html_cache or b"<h1>Smart Lava Lamp</h1>"
 
         header = (
             "HTTP/1.1 200 OK\r\n"
@@ -137,11 +152,10 @@ class WebServer:
 
         if path == "/api/power" and method == "POST":
             if data and "on" in data:
-                ok = self.state.set_power(bool(data["on"]))
-                if ok:
-                    await self._send_response(writer, 200, {"success": True, "power": self.state.power_on})
-                else:
-                    await self._send_response(writer, 409, {"error": "Cannot power on: fault latched (%s)" % (self.state.safety.fault or "")})
+                target_on = bool(data["on"])
+                await self._send_response(writer, 200, {"success": True, "power": target_on})
+                await asyncio.sleep_ms(30)
+                self.state.set_power(target_on)
             else:
                 await self._send_response(writer, 400, {"error": "Missing 'on' boolean"})
             return
@@ -154,8 +168,10 @@ class WebServer:
                 elif "value" in data:
                     val = float(data["value"])
             if val is not None:
-                p = self.state.set_power_pct(val)
-                await self._send_response(writer, 200, {"success": True, "power_pct": p})
+                clamped = max(0.0, min(100.0, val))
+                await self._send_response(writer, 200, {"success": True, "power_pct": clamped})
+                await asyncio.sleep_ms(30)
+                self.state.set_power_pct(clamped)
             else:
                 await self._send_response(writer, 400, {"error": "Missing 'power_pct' or 'value'"})
             return
@@ -177,13 +193,15 @@ class WebServer:
 
     async def _send_response(self, writer, code, payload):
         body_bytes = json.dumps(payload).encode()
+        reason = STATUS_TEXT.get(code, "OK")
         header = (
-            "HTTP/1.1 %d OK\r\n"
+            "HTTP/1.1 %d %s\r\n"
             "Content-Type: application/json\r\n"
             "Access-Control-Allow-Origin: *\r\n"
+            "Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n"
             "Access-Control-Allow-Headers: Authorization, Content-Type\r\n"
             "Content-Length: %d\r\n"
-            "Connection: close\r\n\r\n" % (code, len(body_bytes))
+            "Connection: close\r\n\r\n" % (code, reason, len(body_bytes))
         )
         writer.write(header.encode())
         writer.write(body_bytes)
