@@ -33,6 +33,7 @@ class Config:
                     self.data.update(loaded)
         except Exception as e:
             print("Config load note:", e)
+        self.data["limits"] = dict(DEFAULT_CONFIG["limits"])
 
     def save(self):
         # Atomic-like replace using a temp file to avoid corrupting on power loss

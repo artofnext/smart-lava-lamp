@@ -7,10 +7,10 @@ $conn = if ($Port -eq "auto") { @() } else { @("connect", $Port) }
 
 function mpr { uvx mpremote @conn @args; if ($LASTEXITCODE) { throw "mpremote failed" } }
 
-# 1. Upload config.json if requested
-if ($Config -and (Test-Path "$fw\config.json")) {
+# 1. Upload config.json
+if (Test-Path "$fw\config.json") {
     Write-Host "Uploading config.json..."
-    mpr cp "$fw\config.json" :config.json
+    mpr cp -f "$fw\config.json" :config.json
 }
 
 # 2. Upload all python firmware files
