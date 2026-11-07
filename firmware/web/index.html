@@ -151,8 +151,10 @@
     }
 
     async function api(path, method = "GET", body = null) {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 3000);
       try {
-        const opts = { method, headers: authHeaders() };
+        const opts = { method, headers: authHeaders(), signal: ctrl.signal };
         if (body) opts.body = JSON.stringify(body);
         const res = await fetch(path, opts);
         if (res.status === 401) {
@@ -166,6 +168,8 @@
         return await res.json();
       } catch (e) {
         return null;
+      } finally {
+        clearTimeout(timer);
       }
     }
 
@@ -364,9 +368,13 @@
       syncLedUi(data.led, data.power);
     }
 
+    async function pollLoop() {
+      await fetchStatus();
+      setTimeout(pollLoop, 2000);
+    }
+
     loadInitialHistory().then(() => {
-      fetchStatus();
-      setInterval(fetchStatus, 1000);
+      pollLoop();
     });
   </script>
 </body>

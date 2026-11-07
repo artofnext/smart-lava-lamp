@@ -21,73 +21,7 @@ class WebServer:
 
     async def _handle_client(self, reader, writer):
         try:
-            line = await reader.readline()
-            if not line:
-                writer.close()
-                await writer.wait_closed()
-                return
-
-            req_line = line.decode().strip()
-            parts = req_line.split()
-            if len(parts) < 2:
-                writer.close()
-                return
-            method, url = parts[0], parts[1]
-
-            # Parse query params if any
-            query_token = None
-            if "?" in url:
-                path, qs = url.split("?", 1)
-                for q in qs.split("&"):
-                    if q.startswith("token="):
-                        query_token = q.split("=", 1)[1]
-            else:
-                path = url
-
-            # Read headers
-            headers = {}
-            content_length = 0
-            while True:
-                hline = await reader.readline()
-                if not hline or hline == b"\r\n" or hline == b"\n":
-                    break
-                hstr = hline.decode()
-                if ":" in hstr:
-                    k, v = hstr.split(":", 1)
-                    k_lower = k.strip().lower()
-                    headers[k_lower] = v.strip()
-                    if k_lower == "content-length":
-                        try:
-                            content_length = int(v.strip())
-                        except Exception:
-                            pass
-
-            # Read body
-            body = b""
-            if content_length > 0:
-                body = await reader.read(content_length)
-
-            # Serve static UI
-            if path in ("/", "/index.html"):
-                await self._serve_index(writer)
-                return
-
-            # API Token check
-            expected_token = self.state.config.get("token", "")
-            auth_header = headers.get("authorization", "")
-            token = None
-            if auth_header.startswith("Bearer "):
-                token = auth_header[7:].strip()
-            elif query_token:
-                token = query_token
-
-            if not constant_time_compare(expected_token, token):
-                await self._send_response(writer, 401, {"error": "Unauthorized"})
-                return
-
-            # API Routes
-            await self._route_api(method, path, body, writer)
-
+            await asyncio.wait_for(self._process_request(reader, writer), 4)
         except Exception as e:
             print("HTTP handler error:", e)
         finally:
@@ -96,6 +30,71 @@ class WebServer:
                 await writer.wait_closed()
             except Exception:
                 pass
+
+    async def _process_request(self, reader, writer):
+        line = await reader.readline()
+        if not line:
+            return
+
+        req_line = line.decode().strip()
+        parts = req_line.split()
+        if len(parts) < 2:
+            return
+        method, url = parts[0], parts[1]
+
+        # Parse query params if any
+        query_token = None
+        if "?" in url:
+            path, qs = url.split("?", 1)
+            for q in qs.split("&"):
+                if q.startswith("token="):
+                    query_token = q.split("=", 1)[1]
+        else:
+            path = url
+
+        # Read headers
+        headers = {}
+        content_length = 0
+        while True:
+            hline = await reader.readline()
+            if not hline or hline == b"\r\n" or hline == b"\n":
+                break
+            hstr = hline.decode()
+            if ":" in hstr:
+                k, v = hstr.split(":", 1)
+                k_lower = k.strip().lower()
+                headers[k_lower] = v.strip()
+                if k_lower == "content-length":
+                    try:
+                        content_length = int(v.strip())
+                    except Exception:
+                        pass
+
+        # Read body
+        body = b""
+        if content_length > 0:
+            body = await reader.read(content_length)
+
+        # Serve static UI
+        if path in ("/", "/index.html"):
+            await self._serve_index(writer)
+            return
+
+        # API Token check
+        expected_token = self.state.config.get("token", "")
+        auth_header = headers.get("authorization", "")
+        token = None
+        if auth_header.startswith("Bearer "):
+            token = auth_header[7:].strip()
+        elif query_token:
+            token = query_token
+
+        if not constant_time_compare(expected_token, token):
+            await self._send_response(writer, 401, {"error": "Unauthorized"})
+            return
+
+        # API Routes
+        await self._route_api(method, path, body, writer)
 
     async def _serve_index(self, writer):
         html_data = None

@@ -1,4 +1,5 @@
 import time
+import gc
 import asyncio
 import network
 import machine
@@ -141,6 +142,16 @@ async def led_loop(app_state):
 async def connect_wifi(cfg):
     w = network.WLAN(network.STA_IF)
     w.active(True)
+    # ESP32-C3 SuperMini stability: disable Wi-Fi modem sleep & lower TX power to prevent RF reflection drops
+    try:
+        w.config(pm=getattr(w, "PM_NONE", 0xa11140))
+    except Exception:
+        pass
+    try:
+        w.config(txpower=8.5)
+    except Exception:
+        pass
+
     wifi_cfg = cfg.get("wifi", {})
     ssid = wifi_cfg.get("ssid", "")
     pwd = wifi_cfg.get("password", "")
@@ -150,10 +161,10 @@ async def connect_wifi(cfg):
         for _ in range(15):
             if w.isconnected():
                 print("Wi-Fi connected! IP:", w.ifconfig()[0])
-                return w.ifconfig()[0]
+                return w, w.ifconfig()[0]
             await asyncio.sleep(1)
     print("Wi-Fi not connected (running in standalone mode)")
-    return w.ifconfig()[0] if w.isconnected() else "0.0.0.0"
+    return w, (w.ifconfig()[0] if w.isconnected() else "0.0.0.0")
 
 
 async def main():
@@ -171,7 +182,10 @@ async def main():
     asyncio.create_task(led_loop(app_state))
 
     # Wi-Fi & Web Server
-    app_state.ip_address = await connect_wifi(config)
+    wlan, app_state.ip_address = await connect_wifi(config)
+    wifi_cfg = config.get("wifi", {})
+    wifi_ssid = wifi_cfg.get("ssid", "")
+    wifi_pwd = wifi_cfg.get("password", "")
     web = WebServer(app_state, port=80)
     await web.start()
 
@@ -189,6 +203,17 @@ async def main():
             loop_count += 1
             if wdt:
                 wdt.feed()
+            if loop_count % 10 == 0:
+                gc.collect()
+            if loop_count % 15 == 0 and wifi_ssid:
+                if wlan.isconnected():
+                    app_state.ip_address = wlan.ifconfig()[0]
+                else:
+                    try:
+                        wlan.disconnect()
+                        wlan.connect(wifi_ssid, wifi_pwd)
+                    except Exception:
+                        pass
 
             now = time.time()
 
