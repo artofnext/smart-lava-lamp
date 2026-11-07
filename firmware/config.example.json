@@ -5,47 +5,12 @@
   },
   "token": "change-me",
   "hostname": "lavalamp",
-  "setpoint": 50.0,
   "power_pct": 100,
-  "pid": {
-    "kp": 8.0,
-    "ki": 0.05,
-    "kd": 40.0
-  },
   "max_duty": 100,
   "pwm_freq": 10,
   "limits": {
     "min": 0,
     "max": 100,
     "cutoff": 200
-  },
-  "tz_dst": true,
-  "led": {
-    "brightness": 40,
-    "palette": "lava"
-  },
-  "schedule": [],
-  "patterns": {
-    "calm": [
-      [
-        0,
-        50
-      ]
-    ],
-    "lively": [
-      [
-        0,
-        54
-      ],
-      [
-        20,
-        48
-      ],
-      [
-        40,
-        54
-      ]
-    ]
-  },
-  "heat_rate": 0.15
+  }
 }

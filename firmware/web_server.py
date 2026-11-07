@@ -132,6 +132,10 @@ class WebServer:
             await self._send_response(writer, 200, self.state.get_status())
             return
 
+        if path == "/api/history" and method == "GET":
+            await self._send_response(writer, 200, {"interval_s": 10, "temps": self.state.history})
+            return
+
         if path == "/api/power" and method == "POST":
             if data and "on" in data:
                 ok = self.state.set_power(bool(data["on"]))
@@ -143,53 +147,23 @@ class WebServer:
                 await self._send_response(writer, 400, {"error": "Missing 'on' boolean"})
             return
 
-        if (path == "/api/power-level" or path == "/api/setpoint") and method == "POST":
+        if path == "/api/power-level" and method == "POST":
             val = None
             if data:
-                if "value" in data:
-                    val = float(data["value"])
-                elif "power_pct" in data:
+                if "power_pct" in data:
                     val = float(data["power_pct"])
+                elif "value" in data:
+                    val = float(data["value"])
             if val is not None:
                 p = self.state.set_power_pct(val)
-                await self._send_response(writer, 200, {"success": True, "power_pct": p, "setpoint": p})
+                await self._send_response(writer, 200, {"success": True, "power_pct": p})
             else:
-                await self._send_response(writer, 400, {"error": "Missing 'value' or 'power_pct'"})
-            return
-
-        if path == "/api/pid":
-            if method == "GET":
-                await self._send_response(writer, 200, self.state.config.get("pid", {}))
-            elif method == "POST" and data:
-                self.state.update_pid(data)
-                await self._send_response(writer, 200, {"success": True})
+                await self._send_response(writer, 400, {"error": "Missing 'power_pct' or 'value'"})
             return
 
         if path == "/api/reset-fault" and method == "POST":
             self.state.reset_fault()
             await self._send_response(writer, 200, {"success": True})
-            return
-
-        if path == "/api/pattern/run" and method == "POST":
-            name = data.get("name") if data else None
-            self.state.active_pattern = name
-            if name:
-                self.state.set_power(True)
-            await self._send_response(writer, 200, {"success": True, "pattern": name, "power": self.state.power_on})
-            return
-
-        if path == "/api/led":
-            if method == "POST" and data:
-                if "brightness" in data:
-                    self.state.set_led_brightness(data["brightness"])
-                if "palette" in data:
-                    self.state.set_led_palette(data["palette"])
-                await self._send_response(writer, 200, {"success": True})
-            else:
-                await self._send_response(writer, 200, {
-                    "brightness": int(self.state.leds.brightness * 100),
-                    "palette": self.state.leds.palette
-                })
             return
 
         await self._send_response(writer, 404, {"error": "Not found"})
@@ -207,4 +181,3 @@ class WebServer:
         writer.write(header.encode())
         writer.write(body_bytes)
         await writer.drain()
-

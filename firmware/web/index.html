@@ -11,11 +11,9 @@
       --border: #2e3039;
       --primary: #ff5e3a;
       --primary-glow: rgba(255, 94, 58, 0.3);
-      --accent: #ffa600;
       --text: #e8eaed;
       --muted: #9aa0a6;
       --danger: #ff4444;
-      --success: #00e676;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
     body { background: var(--bg); color: var(--text); padding: 16px; display: flex; justify-content: center; }
@@ -26,8 +24,6 @@
     .badge { padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; background: #333; color: #ccc; }
     .badge.OFF { background: #333; color: #888; }
     .badge.HEATING { background: #d97706; color: #fff; }
-    .badge.WARMING { background: #d97706; color: #fff; }
-    .badge.HOLDING { background: #16a34a; color: #fff; }
     .badge.COOLING { background: #2563eb; color: #fff; }
     .badge.FAULT { background: var(--danger); color: #fff; animation: pulse 1.5s infinite; }
     @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
@@ -37,7 +33,7 @@
     .target-temp { color: var(--muted); font-size: 0.95rem; margin-top: 6px; }
 
     .slider-group { display: flex; align-items: center; gap: 12px; margin: 12px 0; }
-    .step-btn { width: 44px; height: 44px; border-radius: 12px; border: 1px solid var(--border); background: #262830; color: #fff; font-size: 1.5rem; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+    .step-btn { width: 44px; height: 44px; border-radius: 12px; border: 1px solid var(--border); background: #262830; color: #fff; font-size: 1.1rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; }
     .step-btn:active { background: var(--primary); }
     input[type=range] { flex: 1; -webkit-appearance: none; height: 8px; background: #2e3039; border-radius: 4px; outline: none; }
     input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 22px; height: 22px; border-radius: 50%; background: var(--primary); cursor: pointer; }
@@ -51,12 +47,9 @@
     .btn-power.on { background: var(--primary); color: #fff; box-shadow: 0 0 15px var(--primary-glow); }
     .btn-reset { background: #3b2020; color: #ff8888; border: 1px solid #662222; }
 
-    canvas { width: 100%; height: 130px; margin-top: 12px; background: #17181c; border-radius: 8px; }
-    .section-title { font-size: 0.9rem; font-weight: 600; color: var(--muted); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
-
-    .setting-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #262830; font-size: 0.9rem; }
-    .setting-item input[type=number] { width: 64px; background: #262830; border: 1px solid var(--border); color: #fff; border-radius: 6px; padding: 4px 8px; text-align: center; }
-    .banner { padding: 12px; border-radius: 10px; background: #5c1414; color: #ffcccc; margin-bottom: 10px; font-size: 0.85rem; display: none; }
+    canvas { width: 100%; height: 140px; margin-top: 14px; background: #17181c; border-radius: 8px; }
+    .meta-row { display: flex; justify-content: space-between; font-size: 0.78rem; color: var(--muted); margin-top: 12px; padding-top: 10px; border-top: 1px solid #262830; }
+    .banner { padding: 12px; border-radius: 10px; background: #5c1414; color: #ffcccc; font-size: 0.85rem; display: none; }
   </style>
 </head>
 <body>
@@ -102,37 +95,11 @@
       </div>
 
       <canvas id="chartCanvas"></canvas>
-    </div>
 
-    <div class="card">
-      <div class="section-title">Heating Profile</div>
-      <div style="display:flex; gap:8px; margin-bottom:14px;">
-        <button class="btn btn-power" style="flex:1;" onclick="setPattern('calm')">Calm (50°)</button>
-        <button class="btn btn-power" style="flex:1;" onclick="setPattern('lively')">Lively</button>
-        <button class="btn btn-power" style="flex:1;" onclick="setPattern(null)">Manual</button>
+      <div class="meta-row">
+        <span>IP: <strong id="devIp">--</strong></span>
+        <span>Uptime: <strong id="devUptime">--</strong></span>
       </div>
-
-      <div class="section-title">LED Ring Lighting</div>
-      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-bottom:12px;">
-        <button class="btn btn-power" onclick="setPalette('status')">Auto (Status)</button>
-        <button class="btn btn-power" onclick="setPalette('lava')">Lava Glow</button>
-        <button class="btn btn-power" onclick="setPalette('rainbow')">Rainbow</button>
-        <button class="btn btn-power" onclick="setPalette('white')">Warm White</button>
-      </div>
-      <div class="setting-item">
-        <span>LED Brightness (max 80%)</span>
-        <input type="range" id="brightSlider" min="10" max="80" step="5" value="40" style="width:140px;" onchange="setBrightness(this.value)">
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="section-title">PID & Diagnostics</div>
-      <div class="setting-item"><span>Kp</span><input id="pidKp" type="number" step="0.5"></div>
-      <div class="setting-item"><span>Ki</span><input id="pidKi" type="number" step="0.01"></div>
-      <div class="setting-item"><span>Kd</span><input id="pidKd" type="number" step="1"></div>
-      <button class="btn btn-power" style="width:100%; margin-top:8px;" onclick="savePid()">Save PID Gains</button>
-      <div class="setting-item" style="margin-top:8px;"><span>IP Address</span><span id="devIp">--</span></div>
-      <div class="setting-item"><span>Uptime</span><span id="devUptime">--</span></div>
     </div>
   </div>
 
@@ -140,8 +107,7 @@
     let token = localStorage.getItem("ll_token") || "lavalamp-token-9349fi4j34489";
     let isPowered = false;
     let history = [];
-    let limitsMin = 45;
-    let limitsMax = 100;
+    const WINDOW_MS = 3600 * 1000; // 1 hour sliding window
 
     function authHeaders() {
       return { "Content-Type": "application/json", "Authorization": "Bearer " + token };
@@ -200,28 +166,6 @@
       fetchStatus();
     }
 
-    async function setPattern(name) {
-      await api("/api/pattern/run", "POST", { name });
-      fetchStatus();
-    }
-
-    async function setPalette(palette) {
-      await api("/api/led", "POST", { palette });
-      fetchStatus();
-    }
-
-    async function setBrightness(val) {
-      await api("/api/led", "POST", { brightness: parseInt(val) });
-    }
-
-    async function savePid() {
-      const kp = parseFloat(document.getElementById("pidKp").value);
-      const ki = parseFloat(document.getElementById("pidKi").value);
-      const kd = parseFloat(document.getElementById("pidKd").value);
-      await api("/api/pid", "POST", { kp, ki, kd });
-      alert("PID gains saved");
-    }
-
     function drawChart() {
       const canvas = document.getElementById("chartCanvas");
       const ctx = canvas.getContext("2d");
@@ -231,32 +175,60 @@
       ctx.scale(dpr, dpr);
       const w = canvas.clientWidth, h = canvas.clientHeight;
       ctx.clearRect(0, 0, w, h);
-      if (history.length < 2) return;
 
-      const minT = 20, maxT = 125;
-      ctx.strokeStyle = "#333";
+      const minT = 20, maxT = 130;
+      ctx.strokeStyle = "#2a2c35";
       ctx.beginPath();
       ctx.moveTo(0, h * 0.5); ctx.lineTo(w, h * 0.5);
       ctx.stroke();
+
+      ctx.fillStyle = "#6e737b";
+      ctx.font = "10px sans-serif";
+      ctx.fillText(`${maxT}°C`, 6, 12);
+      ctx.fillText(`${minT}°C`, 6, h - 6);
+      ctx.fillText("-60m", 42, h - 6);
+      ctx.fillText("now", w - 26, h - 6);
+
+      if (history.length < 2) return;
+
+      const now = history[history.length - 1].t;
+      const tStart = now - WINDOW_MS;
 
       ctx.strokeStyle = "#ff5e3a";
       ctx.lineWidth = 2;
       ctx.beginPath();
       for (let i = 0; i < history.length; i++) {
-        const x = (i / (history.length - 1)) * w;
+        const x = Math.max(0, Math.min(w, ((history[i].t - tStart) / WINDOW_MS) * w));
         const y = h - ((history[i].temp - minT) / (maxT - minT)) * h;
         if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
       }
       ctx.stroke();
     }
 
+    async function loadInitialHistory() {
+      const data = await api("/api/history");
+      if (data && Array.isArray(data.temps) && data.temps.length) {
+        const now = Date.now();
+        const stepMs = (data.interval_s || 10) * 1000;
+        const n = data.temps.length;
+        history = data.temps.map((temp, i) => ({
+          t: now - (n - 1 - i) * stepMs,
+          temp
+        }));
+        drawChart();
+      }
+    }
+
     async function fetchStatus() {
       const data = await api("/api/status");
       if (!data) return;
 
+      if (data.limits && data.limits.cutoff) {
+        document.getElementById("cutoffInfo").innerText = `DS18B20 Telemetry (Cutoff: ${data.limits.cutoff}°C)`;
+      }
 
       document.getElementById("currentTemp").innerText = data.temp !== null ? `${data.temp.toFixed(1)}°` : "--.-°";
-      const pLvl = data.power_pct !== undefined ? data.power_pct : (data.setpoint || 100);
+      const pLvl = data.power_pct !== undefined ? data.power_pct : 100;
       document.getElementById("targetText").innerText = `Heater Power: ${Math.round(pLvl)} %`;
       document.getElementById("powerSlider").value = pLvl;
 
@@ -281,23 +253,23 @@
       }
 
       if (data.temp !== null) {
-        history.push({ temp: data.temp, duty: data.duty });
-        if (history.length > 60) history.shift();
+        const now = Date.now();
+        history.push({ t: now, temp: data.temp });
+        const cutoffTime = now - WINDOW_MS;
+        while (history.length > 0 && history[0].t < cutoffTime) {
+          history.shift();
+        }
         drawChart();
       }
 
       document.getElementById("devIp").innerText = data.ip || "--";
       document.getElementById("devUptime").innerText = `${Math.floor(data.uptime / 60)} min`;
-      if (!document.getElementById("pidKp").value && data.pid) {
-        document.getElementById("pidKp").value = data.pid.kp;
-        document.getElementById("pidKi").value = data.pid.ki;
-        document.getElementById("pidKd").value = data.pid.kd;
-      }
     }
 
-    setInterval(fetchStatus, 1500);
-    fetchStatus();
+    loadInitialHistory().then(() => {
+      fetchStatus();
+      setInterval(fetchStatus, 1000);
+    });
   </script>
 </body>
 </html>
-
